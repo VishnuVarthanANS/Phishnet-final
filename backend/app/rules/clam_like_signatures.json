@@ -1,5 +1,14 @@
 [
-  {"name":"suspicious_iframe","pattern":"<iframe[^>]*>"},
-  {"name":"credential_phish_form","pattern":"(input[^>]*type=['\"]password['\"])"},
-  {"name":"fast_redirect_meta","pattern":"<meta[^>]*http-equiv=['\"]refresh['\"]"}
+  {
+    "name": "Fake_Login_Form",
+    "pattern": "(password|passwd|pwd)[^>]{0,20}(input|type)"
+  },
+  {
+    "name": "Account_Verification_Lure",
+    "pattern": "(verify|confirm|update).{0,20}(account|identity)"
+  },
+  {
+    "name": "Credential_Theft_JS",
+    "pattern": "(XMLHttpRequest|fetch).*password"
+  }
 ]

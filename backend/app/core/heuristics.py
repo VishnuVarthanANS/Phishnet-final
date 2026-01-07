@@ -1,69 +1,54 @@
-import math, base64, re
+import re
 from bs4 import BeautifulSoup
+from urllib.parse import urlparse
 from typing import Dict
 
-def shannon_entropy(data: str) -> float:
-    if not data:
-        return 0.0
-    probs = [float(data.count(c)) / len(data) for c in set(data)]
-    entropy = -sum(p * math.log2(p) for p in probs)
-    return entropy
-
-def detect_obfuscation(js: str) -> list:
-    patterns = {
-        
-        "base64_decode": r"(atob\s*\(|btoa\s*\()",
-
-        
-        "base64_blob": r"[A-Za-z0-9+/]{20,}={0,2}",
-
-        
-        "eval_usage": r"eval\s*\(",
-
-        
-        "hex_escape": r"(\\x[0-9A-Fa-f]{2})",
-
-        
-        "function_constructor": r"new Function\s*\(",
-    }
-
-    hits = []
-    for name, pat in patterns.items():
-        if re.search(pat, js or "", re.IGNORECASE):
-            hits.append(name)
-
-    return hits
-
-
-def count_iframes(html: str) -> int:
-    soup = BeautifulSoup(html or "", "html.parser")
-    return len(soup.find_all("iframe"))
+URL_SHORTENERS = ["bit.ly","tinyurl.com","t.co","goo.gl"]
 
 def analyze_heuristics(url: str="", html: str="", js: str="") -> Dict:
-    reasons = []
     score = 0.0
+    reasons = []
 
-    
-    ent_html = shannon_entropy(html or "")
-    ent_js = shannon_entropy(js or "")
-    if ent_js > 3.8:
-        reasons.append(f"high_js_entropy:{ent_js:.2f}")
-        score = max(score, 0.6)
+    soup = BeautifulSoup(html or "", "html.parser")
+    text = (html + " " + js).lower()
 
-    
-    obf = detect_obfuscation(js)
-    if obf:
-        reasons.append(f"obfuscation:{','.join(obf)}")
-        score = max(score, 0.7)
+    # 1. Password field
+    if soup.find("input", {"type": "password"}):
+        score += 0.25
+        reasons.append("password_field")
 
-    
-    if count_iframes(html) > 2:
-        reasons.append("multiple_iframes")
-        score = max(score, 0.55)
+    # 2. Lure keywords
+    if re.search(r"(verify|confirm|secure|account|login|signin|update)", text):
+        score += 0.15
+        reasons.append("lure_language")
 
-    
-    if "meta refresh" in (html or "").lower() or "location.href" in (js or ""):
-        reasons.append("redirect_behavior")
-        score = max(score, 0.6)
+    # 3. External form submission
+    for form in soup.find_all("form"):
+        action = form.get("action","")
+        if action.startswith("http"):
+            page_domain = urlparse(url).netloc
+            form_domain = urlparse(action).netloc
+            if page_domain and form_domain and page_domain not in form_domain:
+                score += 0.30
+                reasons.append("external_form_post")
 
-    return {"suspicion_score": score, "reasons": reasons, "ent_html": ent_html, "ent_js": ent_js}
+    # 4. IP-based URL
+    domain = urlparse(url).netloc
+    if re.match(r"\d+\.\d+\.\d+\.\d+", domain):
+        score += 0.20
+        reasons.append("ip_based_url")
+
+    # 5. URL shorteners
+    if any(s in domain for s in URL_SHORTENERS):
+        score += 0.25
+        reasons.append("url_shortener")
+
+    # 6. Abnormal domain length
+    if len(domain) > 35:
+        score += 0.10
+        reasons.append("long_domain")
+
+    score = min(score, 1.0)
+    return {"suspicion_score": round(score,2), "reasons": reasons}
+
+

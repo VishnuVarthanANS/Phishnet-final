@@ -1,96 +1,62 @@
-export default function ReportCard({ report }) {
-  if (!report) return null;
+export default function ReportCard({ data }) {
+  if (!data) return null;
 
-  function getRiskMeter(score) {
-    if (score < 0.35) return { label: "Benign", blocks: 2 };
-    if (score < 0.55) return { label: "Low", blocks: 3 };
-    if (score < 0.70) return { label: "Suspicious", blocks: 4 };
-    if (score < 0.85) return { label: "High", blocks: 5 };
-    return { label: "Critical", blocks: 6 };
-  }
+  const score = data.final_score;
 
-  const { label, blocks } = getRiskMeter(report.final_score);
+  const verdict =
+    score > 0.6 ? "PHISHING" :
+    score > 0.35 ? "SUSPICIOUS" :
+    "SAFE";
+
+  const color =
+    verdict === "PHISHING" ? "#e53935" :
+    verdict === "SUSPICIOUS" ? "#fb8c00" :
+    "#43a047";
 
   return (
     <div
       style={{
         background: "#fff",
         border: "1px solid #ddd",
-        borderRadius: "8px",
+        borderRadius: "10px",
         padding: "20px",
-        marginTop: "20px",
-        width: "100%",
-        display: "flex",
-        flexDirection: "column",
-        gap: "12px",
-        boxShadow: "0 2px 6px rgba(0,0,0,0.05)"
+        marginTop: "20px"
       }}
     >
-      <h2 style={{ margin: 0 }}>Output</h2>
+      <h2>Scan Report</h2>
 
-      <div>
-        <strong>Risk Score: </strong>
-        {report.final_score}
-      </div>
+      <p><b>URL:</b> {data.url}</p>
 
-      {/* RISK METER BAR */}
-      <div style={{ marginTop: "10px" }}>
-        <strong>Risk Meter:</strong>
+      <p>
+        <b>Risk Score:</b>{" "}
+        <span style={{ fontWeight: "bold" }}>{score.toFixed(2)}</span>
+      </p>
 
-        <div
-          style={{
-            marginTop: "8px",
-            display: "flex",
-            gap: "4px"
-          }}
-        >
-          {[...Array(6)].map((_, i) => (
-            <div
-              key={i}
-              style={{
-                height: "10px",
-                width: "30px",
-                background: i < blocks ? "#333" : "#ddd",
-                borderRadius: "3px",
-                transition: "background 0.2s ease"
-              }}
-            />
-          ))}
-        </div>
+      <p>
+        <b>Verdict:</b>{" "}
+        <span style={{ color, fontWeight: "bold" }}>{verdict}</span>
+      </p>
 
-        <div
-          style={{
-            marginTop: "6px",
-            fontSize: "14px",
-            color: "#444",
-            fontFamily: "Consolas, monospace"
-          }}
-        >
-          {label}
-        </div>
-      </div>
+      <h4>Detection Evidence</h4>
 
-      <strong>Indicators:</strong>
+      <ul>
+        {data.reasons.heuristics?.map((r, i) => (
+          <li key={i}>Heuristic: {r}</li>
+        ))}
+        {data.reasons.yara?.map((r, i) => (
+          <li key={i}>Signature(YARA): {r}</li>
+        ))}
+        {data.reasons.clam?.map((r, i) => (
+          <li key={i}>Signature(Clam): {r}</li>
+        ))}
+      </ul>
 
-      <pre
-        style={{
-          background: "#eee",
-          padding: "14px",
-          borderRadius: "6px",
-          overflowX: "auto",
-          fontSize: "14px",
-          fontFamily: "Consolas, monospace"
-        }}
-      >
-        {JSON.stringify(report.reasons, null, 2)}
-      </pre>
+      <details style={{ marginTop: "10px" }}>
+        <summary>ML Explanation</summary>
+        <pre style={{ background: "#f7f7f7", padding: "10px" }}>
+          {JSON.stringify(data.reasons.ml, null, 2)}
+        </pre>
+      </details>
     </div>
   );
 }
-
-
-
-
-
-
-

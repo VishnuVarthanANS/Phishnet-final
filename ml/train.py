@@ -1,19 +1,50 @@
-import numpy as np
-import lightgbm as lgb
+import pandas as pd
 from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.metrics import accuracy_score
 import joblib
-import os
+
+print("Loading dataset...")
+
+df = pd.read_csv("dataset.csv")
+print("Rows:", len(df))
+
+FEATURES = [
+    "having_IP_Address",
+    "URL_Length",
+    "Shortining_Service",
+    "having_At_Symbol",
+    "double_slash_redirecting",
+    "Prefix_Suffix",
+    "having_Sub_Domain",
+    "SSLfinal_State",
+    "Request_URL",
+    "URL_of_Anchor",
+    "Submitting_to_email",
+    "Abnormal_URL",
+    "Redirect",
+    "Iframe",
+    "web_traffic",
+    "Google_Index",
+    "Statistical_report"
+]
 
 
-X = np.random.rand(1000,3).astype("float32") * np.array([200,5000,8])
-y = (X[:,1] / (X[:,0]+1) > 20).astype(int)
+print("Preparing features...")
+X = df[FEATURES]
+y = df["Result"].replace(-1,0)
 
-X_train,X_test,y_train,y_test = train_test_split(X,y,test_size=0.2, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(X,y,test_size=0.2,random_state=42)
 
-dtrain = lgb.Dataset(X_train, label=y_train)
-params = {"objective":"binary","metric":"binary_logloss","verbose":-1}
+print("Training model...")
+model = RandomForestClassifier(n_estimators=200, random_state=42)
+model.fit(X_train,y_train)
 
-bst = lgb.train(params, dtrain, num_boost_round=50)
-os.makedirs("ml_model", exist_ok=True)
-joblib.dump(bst, "ml_model/lgb_model.pkl")
-print("Saved model to ml_model/lgb_model.pkl")
+print("Evaluating...")
+pred = model.predict(X_test)
+acc = accuracy_score(y_test,pred)
+
+print("\nModel Accuracy:", acc)
+
+joblib.dump(model,"model.pkl")
+print("Model saved as model.pkl")

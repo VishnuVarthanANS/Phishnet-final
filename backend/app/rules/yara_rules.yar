@@ -1,11 +1,27 @@
-rule suspicious_base64_eval {
-    meta:
-        author = "phishnet-sample"
-        description = "detects base64 + eval patterns"
+rule Phishing_Login_Form
+{
     strings:
-        $a = /(?:atob|btoa)\s*\(/
-        $b = /eval\s*\(/
-        $c = /[A-Za-z0-9+\/]{40,}={0,2}/
+        $pw1 = /type\s*=\s*["']password["']/ nocase
+        $pw2 = /name\s*=\s*["']password["']/ nocase
+        $auth = /(signin|login|verify|account|secure)/ nocase
     condition:
-        ($a and $b) or $c
+        any of them
+}
+
+rule Phishing_JS_Credential_Theft
+{
+    strings:
+        $xhr = /XMLHttpRequest|fetch\(/ nocase
+        $post = /method\s*:\s*["']POST["']/ nocase
+        $send = /password|credential|auth/ nocase
+    condition:
+        $xhr and $send
+}
+
+rule Phishing_Obfuscated_JS
+{
+    strings:
+        $eval = /eval\(|atob\(|fromCharCode/ nocase
+    condition:
+        any of them
 }
